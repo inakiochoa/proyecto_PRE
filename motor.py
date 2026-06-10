@@ -12,6 +12,7 @@ editando_escala = False
 mapa_celdas = {}
 pos_A, pos_B = None, None
 modo_actual = 1
+camino_actual = []
 
 desplazando = False
 inicio_desplazamiento, inicio_camara = (0, 0), (0, 0)

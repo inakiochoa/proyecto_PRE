@@ -5,6 +5,7 @@ import math
 from constantes import *
 import motor
 import graficos
+import ia 
 
 pygame.init()
 
@@ -94,6 +95,9 @@ while True:
                     motor.mapa_celdas.pop((w_col, w_fila), None)
                     motor.pos_B = (w_col, w_fila)
 
+            # Añado esta linea para para recalcular el camino cuando se cambia A o B
+            motor.camino_actual = ia.calcular_camino_directo(motor.pos_A, motor.pos_B)
+
         if evento.type == pygame.MOUSEBUTTONDOWN and evento.button == 2 and en_lienzo:
             motor.desplazando = True
             motor.inicio_desplazamiento = (mx, my)
@@ -160,6 +164,20 @@ while True:
             graficos.dibujar_muro_realista(pantalla, (sx, sy, motor.tamano_celda, motor.tamano_celda))
 
     # Dibujar Entidades (Robot y Meta)
+    # (Cambio esta parte a ver como sale)
+    if motor.camino_actual:
+        for cx, cy in motor.camino_actual:
+            # Calculamos dónde cae la celda en la pantalla en píxeles (con cámara y zoom)
+            sx = cx * motor.tamano_celda - motor.camara_x
+            sy = cy * motor.tamano_celda - motor.camara_y + UI_SUPERIOR
+            
+            # Solo lo dibujamos si cae dentro del lienzo visible de la pantalla
+            if 0 <= sx < ANCHO - UI_LATERAL and UI_SUPERIOR <= sy < ALTO - UI_INFERIOR:
+                # Dibujamos un cuadrado azul eléctrico un poco más pequeño que la celda como rastro
+                rect_camino = (sx + 4, sy + 4, motor.tamano_celda - 8, motor.tamano_celda - 8)
+                pygame.draw.rect(pantalla, (0, 150, 255), rect_camino, border_radius=4)
+            
+
     if motor.pos_A:
         ax = motor.pos_A[0] * motor.tamano_celda - motor.camara_x + motor.tamano_celda // 2
         ay = motor.pos_A[1] * motor.tamano_celda - motor.camara_y + UI_SUPERIOR + motor.tamano_celda // 2
