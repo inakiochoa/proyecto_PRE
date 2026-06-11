@@ -92,6 +92,7 @@ while True:
 
             # Hace que el botón de iniciar ruta funcione
             if btn_iniciar.collidepoint(mx, my):
+                ia.reiniciar_memoria()
                 motor.camino_actual = ia.calcular_camino_directo(motor.pos_A, motor.pos_B)
 
                 # Activa el movimiento del robot
@@ -149,22 +150,30 @@ while True:
         
         if tiempo_actual - ultimo_movimiento_ticket >= INTERVALO_MOVIMIENTO:
             if motor.camino_actual:
-                # 1. Extraemos el siguiente paso de la lista
-                siguiente_paso = motor.camino_actual.pop(0)
-                
-                # 2. Calculamos la orientación antes de mover al robot
-                if motor.pos_A:
-                    dx = siguiente_paso[0] - motor.pos_A[0]
-                    dy = siguiente_paso[1] - motor.pos_A[1]
+                # Guardamos la posición antes de delegar en la IA
+                pos_antigua = motor.pos_A
+
+                # 1. La IA decide si avanza o si se detiene y recalcula por un choque
+                motor.pos_A, motor.camino_actual = ia.actualizar_movimiento(
+                    motor.pos_A, motor.pos_B, motor.camino_actual, motor.mapa_celdas
+                )
+
+                # 2. Si la IA permitió avanzar, calculamos la orientación con la posición antigua
+                if motor.pos_A and pos_antigua and motor.pos_A != pos_antigua:
+                    dx = motor.pos_A[0] - pos_antigua[0]
+                    dy = motor.pos_A[1] - pos_antigua[1]
 
                     if dx > 0: angulo_robot = 0
                     elif dx < 0: angulo_robot = 180
                     elif dy > 0: angulo_robot = 90
                     elif dy < 0: angulo_robot = 270
-                
-                # 3. Movemos al robot físicamente a la nueva casilla
-                motor.pos_A = siguiente_paso
+
                 ultimo_movimiento_ticket = tiempo_actual
+            
+            # 3. COMPROBACIÓN POST-MOVIMIENTO:
+            if motor.pos_A == motor.pos_B:
+                robot_en_movimiento = False
+                motor.pos_B = None
             
             # 4. COMPROBACIÓN POST-MOVIMIENTO:
             # Si el robot ya está físicamente en la misma casilla que la meta,
