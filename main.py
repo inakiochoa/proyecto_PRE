@@ -24,6 +24,14 @@ fuente_mono_lg = pygame.font.SysFont("Consolas", 18, bold=True)
 # Elementos estáticos interactivas
 rect_escala = pygame.Rect(ANCHO - UI_LATERAL + 20, 570, 260, 30)
 btn_centrar = pygame.Rect(ANCHO - UI_LATERAL + 20, 615, 260, 38)
+btn_iniciar = pygame.Rect(ANCHO - UI_LATERAL + 20, 665, 260, 38)
+btn_borrar = pygame.Rect(ANCHO - UI_LATERAL + 20, 715, 260, 38)
+
+# Animación del robot
+robot_en_movimiento = False
+ultimo_movimiento_ticket = 0
+INTERVALO_MOVIMIENTO = 500
+angulo_robot = 0
 
 # Textura procedural de fondo
 textura_suelo = graficos.generar_textura_ruido(ANCHO, ALTO, factor=8)
@@ -82,11 +90,32 @@ while True:
             if btn_centrar.collidepoint(mx, my):
                 motor.camara_x, motor.camara_y, motor.tamano_celda = motor.auto_centrar_mapa()
 
-            for i, h in enumerate(herramientas):
-                btn_rect = pygame.Rect(300 + i * 135, 22, 125, 30)
-                if btn_rect.collidepoint(mx, my):
-                    motor.modo_actual = h["id"]
+            # Hace que el botón de iniciar ruta funcione
+            if btn_iniciar.collidepoint(mx, my):
+                motor.camino_actual = ia.calcular_camino_directo(motor.pos_A, motor.pos_B)
 
+                # Activa el movimiento del robot
+                if motor.camino_actual:
+                    robot_en_movimiento = True 
+                    ultimo_movimiento_ticket = pygame.time.get_ticks()
+
+            if btn_borrar.collidepoint(mx, my):
+
+                robot_en_movimiento = False
+
+                motor.pos_A = None
+                motor.pos_B = None
+            
+                motor.camino_actual = []
+                motor.mapa_celdas.clear()
+
+            if my < UI_SUPERIOR:
+                for i, h in enumerate(herramientas):
+                    btn_rect = pygame.Rect(300 + i * 135, 22, 125, 30)
+                    if btn_rect.collidepoint(mx, my):
+                        motor.modo_actual = h["id"]
+            
+            # Colocar Robot o Meta al hacer clic en el lienzo
             if en_lienzo and not motor.editando_escala:
                 if motor.modo_actual == M_A:
                     motor.mapa_celdas.pop((w_col, w_fila), None)
@@ -94,9 +123,6 @@ while True:
                 elif motor.modo_actual == M_B:
                     motor.mapa_celdas.pop((w_col, w_fila), None)
                     motor.pos_B = (w_col, w_fila)
-
-            # Añado esta linea para para recalcular el camino cuando se cambia A o B
-            motor.camino_actual = ia.calcular_camino_directo(motor.pos_A, motor.pos_B)
 
         if evento.type == pygame.MOUSEBUTTONDOWN and evento.button == 2 and en_lienzo:
             motor.desplazando = True
@@ -116,6 +142,36 @@ while True:
                 motor.mapa_celdas[(w_col, w_fila)] = motor.modo_actual
         elif motor.modo_actual == M_BORRAR:
             motor.mapa_celdas.pop((w_col, w_fila), None)
+
+    # Se comprueban los movimientos segundo a segundo
+    if robot_en_movimiento:
+        tiempo_actual = pygame.time.get_ticks()
+        
+        if tiempo_actual - ultimo_movimiento_ticket >= INTERVALO_MOVIMIENTO:
+            if motor.camino_actual:
+                # 1. Extraemos el siguiente paso de la lista
+                siguiente_paso = motor.camino_actual.pop(0)
+                
+                # 2. Calculamos la orientación antes de mover al robot
+                if motor.pos_A:
+                    dx = siguiente_paso[0] - motor.pos_A[0]
+                    dy = siguiente_paso[1] - motor.pos_A[1]
+
+                    if dx > 0: angulo_robot = 0
+                    elif dx < 0: angulo_robot = 180
+                    elif dy > 0: angulo_robot = 90
+                    elif dy < 0: angulo_robot = 270
+                
+                # 3. Movemos al robot físicamente a la nueva casilla
+                motor.pos_A = siguiente_paso
+                ultimo_movimiento_ticket = tiempo_actual
+            
+            # 4. COMPROBACIÓN POST-MOVIMIENTO:
+            # Si el robot ya está físicamente en la misma casilla que la meta,
+            # detenemos la simulación y hacemos desaparecer el objetivo.
+            if motor.pos_A == motor.pos_B:
+                robot_en_movimiento = False
+                motor.pos_B = None  
 
     # --- RENDERING MAPA ---
     pantalla.blit(textura_suelo, (0, 0))
@@ -182,7 +238,7 @@ while True:
         ax = motor.pos_A[0] * motor.tamano_celda - motor.camara_x + motor.tamano_celda // 2
         ay = motor.pos_A[1] * motor.tamano_celda - motor.camara_y + UI_SUPERIOR + motor.tamano_celda // 2
         if UI_SUPERIOR - motor.tamano_celda < ay < ALTO - UI_INFERIOR + motor.tamano_celda and ax < ANCHO - UI_LATERAL + motor.tamano_celda:
-            graficos.dibujar_robot_realista(pantalla, (ax, ay), motor.tamano_celda)
+            graficos.dibujar_robot_realista(pantalla, (ax, ay), motor.tamano_celda, angulo_robot)
 
     if motor.pos_B:
         bx = motor.pos_B[0] * motor.tamano_celda - motor.camara_x + motor.tamano_celda // 2
@@ -281,6 +337,22 @@ while True:
     txt_c_btn = fuente_ui.render("CENTRAR MAPA [C]", True, C_TXT)
     pantalla.blit(txt_c_btn, txt_c_btn.get_rect(center=btn_centrar.center))
 
+    # Botón iniciar ruta
+    hvr_iniciar = btn_iniciar.collidepoint(mx, my) and panel_x < mx
+    color_btn_iniciar = (40, 140, 80) if not hvr_iniciar else (50, 180, 100)
+    pygame.draw.rect(pantalla, color_btn_iniciar, btn_iniciar, border_radius=6)
+    pygame.draw.rect(pantalla, C_BASE_INICIO, btn_iniciar, 1 if not hvr_iniciar else 2, border_radius=6)
+    txt_i_btn = fuente_ui.render("INICIAR RUTA", True, C_TXT)
+    pantalla.blit(txt_i_btn, txt_i_btn.get_rect(center=btn_iniciar.center))
+
+    # Botón borrar todo
+    hvr_borrar = btn_borrar.collidepoint(mx, my) and panel_x < mx
+    color_btn_borrar = (180, 40, 40) if not hvr_borrar else (220, 50, 50)
+    pygame.draw.rect(pantalla, color_btn_borrar, btn_borrar, border_radius=6)
+    pygame.draw.rect(pantalla, (220, 120, 120), btn_borrar, 1 if not hvr_borrar else 2, border_radius=6)
+    txt_b_btn = fuente_ui.render("BORRAR TODO", True, C_TXT)
+    pantalla.blit(txt_b_btn, txt_b_btn.get_rect(center=btn_borrar.center))
+    
     # Barra inferior
     pygame.draw.rect(pantalla, C_PANEL_FONDO, (0, ALTO - UI_INFERIOR, ANCHO, UI_INFERIOR))
     pygame.draw.rect(pantalla, C_BORDE, (0, ALTO - UI_INFERIOR, ANCHO, 1))

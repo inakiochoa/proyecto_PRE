@@ -65,24 +65,45 @@ def dibujar_zona_rugosa(superficie, rect, col, fila):
         pygame.draw.line(parche, (80, 55, 25, 75), (offset_x, 0), (offset_x + h, h), 2)
     superficie.blit(parche, (x, y))
 
-def dibujar_robot_realista(superficie, centro, tamano):
+def dibujar_robot_realista(superficie, centro, tamano, angulo = 0):
+    
     x, y = centro
     r = tamano // 2 - 2
-    sup_sombra = pygame.Surface((tamano, tamano), pygame.SRCALPHA).convert_alpha()
-    pygame.draw.circle(sup_sombra, (0, 0, 0, 80), (tamano // 2 + 3, tamano // 2 + 3), r)
-    superficie.blit(sup_sombra, (x - tamano // 2, y - tamano // 2))
+    
+    # 1. Creamos una superficie auxiliar transparente del tamaño del robot
+    robot_surf = pygame.Surface((tamano, tamano), pygame.SRCALPHA).convert_alpha()
+    
+    # El centro local de esta nueva superficie será justo la mitad de su tamaño
+    cx, cy = tamano // 2, tamano // 2
 
-    pygame.draw.circle(superficie, (C_BASE_INICIO[0] - 40, C_BASE_INICIO[1] - 40, C_BASE_INICIO[2] - 40), centro, r)
-    pygame.draw.circle(superficie, C_BORDE, centro, r, 2)
-    pygame.draw.circle(superficie, C_BASE_INICIO, centro, r - 3)
+    # 2. Dibujamos el cuerpo del robot centrado en esta superficie local (cx, cy)
+    pygame.draw.circle(robot_surf, (C_BASE_INICIO[0] - 40, C_BASE_INICIO[1] - 40, C_BASE_INICIO[2] - 40), (cx, cy), r)
+    pygame.draw.circle(robot_surf, C_BORDE, (cx, cy), r, 2)
+    pygame.draw.circle(robot_surf, C_BASE_INICIO, (cx, cy), r - 3)
 
+    # Sensor central
     sensor_r = r // 2.5
-    pygame.draw.circle(superficie, (20, 25, 30), centro, int(sensor_r))
-    pygame.draw.circle(superficie, (150, 180, 200, 150), (x - int(sensor_r) // 2, y - int(sensor_r) // 2), 2)
+    pygame.draw.circle(robot_surf, (20, 25, 30), (cx, cy), int(sensor_r))
+    pygame.draw.circle(robot_surf, (150, 180, 200, 150), (cx - int(sensor_r) // 2, cy - int(sensor_r) // 2), 2)
 
-    rect_frente = pygame.Rect(x + sensor_r, y - sensor_r // 2, r - sensor_r - 1, sensor_r)
-    pygame.draw.rect(superficie, (40, 45, 50), rect_frente, border_radius=2)
-    pygame.draw.circle(superficie, C_BASE_INICIO, (x + r - 4, y), 1)
+    # Frente/Dirección del robot (Mirando a la derecha por defecto)
+    rect_frente = pygame.Rect(cx + sensor_r, cy - sensor_r // 2, r - sensor_r - 1, sensor_r)
+    pygame.draw.rect(robot_surf, (40, 45, 50), rect_frente, border_radius=2)
+    pygame.draw.circle(robot_surf, C_BASE_INICIO, (cx + r - 4, cy), 1)
+
+    # 3. Aplicamos la rotación matemática a toda la superficie junta
+    # Usamos signo negativo porque Pygame rota en sentido antihorario
+    robot_rotado = pygame.transform.rotate(robot_surf, -angulo)
+    rect_rotado = robot_rotado.get_rect(center=(x, y))
+
+    # 4. Dibujamos primero la sombra en la pantalla absoluta
+    sup_sombra = pygame.Surface((tamano, tamano), pygame.SRCALPHA).convert_alpha()
+    pygame.draw.circle(sup_sombra, (0, 0, 0, 80), (cx + 3, cy + 3), r)
+    sombra_rotada = pygame.transform.rotate(sup_sombra, -angulo)
+    superficie.blit(sombra_rotada, sombra_rotated := sombra_rotada.get_rect(center=(x + 3, y + 3)))
+
+    # 5. Estampamos el robot rotado final encima de la sombra
+    superficie.blit(robot_rotado, rect_rotado)
 
 def dibujar_meta_realista(superficie, centro, tamano):
     x, y = centro
