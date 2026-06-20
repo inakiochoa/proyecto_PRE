@@ -1,8 +1,7 @@
 # Este algoritmo actualiza la ruta óptima cada vez que se encuentra con un muro
 
-
-
 # Esta es la memoria interna del robot. Al principio de la simulación está vacía.
+
 MUROS_MEMORIZADOS = {}
 
 def calcular_camino_directo(inicio, fin, mapa_para_buscar=None):
@@ -10,54 +9,61 @@ def calcular_camino_directo(inicio, fin, mapa_para_buscar=None):
     Calcula la ruta utilizando el algoritmo BFS.
     Solo tiene en cuenta los muros que se le pasen en 'mapa_para_buscar'.
     """
+
+    # Evita que al pulsar "Iniciar Ruta" sin colocar la meta o el robot haya errores
     if inicio is None or fin is None:
         return []
 
+    # Crea un mapa vacío al iniciar la ruta
     if mapa_para_buscar is None:
         mapa_para_buscar = {}
 
     from constantes import M_MURO
 
+    # Guarda las casillas por las que se ha pasado
     cola = [(inicio, [])]
     visitados = {inicio}
 
+    # Seguro para meta encerrada
+    iteraciones = 0
+    MAX_ITERACIONES = 10000  # Límite seguro para evitar que el bucle explore el infinito
+
+    # Mientras existan elementos dentro de cola...
     while cola:
+        # Si damos demasiadas vueltas buscando una salida imposible, abortamos
+        iteraciones += 1
+        if iteraciones > MAX_ITERACIONES:
+            return []
+
+        # Extrae los elementos de cola
         casilla_actual, camino_acumulado = cola.pop(0)
 
+        # El robot ha llegado a la meta
         if casilla_actual == fin:
             return camino_acumulado
 
+        # Asinga a x e y los valores de la casilla actual
         x, y = casilla_actual
+
+        # Crea una lista con las casillas vecinas a la actual
         vecinos = [(x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)]
 
         for vecino in vecinos:
             # Revisa la memoria de mapas que le pasamos, no el mapa real entero
+            # Si la casilla no ha sido visitada y no es un muro...
             if vecino not in visitados and mapa_para_buscar.get(vecino) != M_MURO:
+                # Se añade a visitados y a cola
                 visitados.add(vecino)
                 cola.append((vecino, camino_acumulado + [vecino]))
 
     return []
-
 
 def actualizar_movimiento(pos_actual, pos_meta, camino_actual, mapa_real_celdas):
     """
     Controla el movimiento. Si encuentra un muro real, lo memoriza
     y recalcula la ruta basándose SOLO en los muros que ya conoce.
     """
-    global MUROS_MEMORIZADOS
-
-    # Si el robot se ha teletransportado o reiniciado en el inicio, vaciamos su memoria
-    # (Esto sirve para cuando pulsas "Iniciar Ruta" de nuevas)
-    if len(camino_actual) > 0 and pos_actual not in camino_actual:
-        # Si es el primer paso ideal del botón, nos aseguramos de que su memoria se limpie
-        if len(MUROS_MEMORIZADOS) > 0 and MUROS_MEMORIZADOS != mapa_real_celdas:
-            # Si el camino actual vino del botón inicial (sin muros), limpiamos memoria
-            # Comprobación simple: si el camino actual no coincide con esquivar muros conocidos,
-            # asumimos que es una nueva simulación.
-            pass
-
-    if not camino_actual:
-        return pos_actual, camino_actual
+    global MUROS_MEMORIZADO
 
     siguiente_casilla = camino_actual[0]
     from constantes import M_MURO
