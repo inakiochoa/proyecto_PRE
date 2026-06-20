@@ -6,6 +6,7 @@ from constantes import *
 import motor
 import graficos
 import ia 
+import botones
 
 pygame.init()
 
@@ -26,6 +27,8 @@ rect_escala = pygame.Rect(ANCHO - UI_LATERAL + 20, 570, 260, 30)
 btn_centrar = pygame.Rect(ANCHO - UI_LATERAL + 20, 615, 260, 38)
 btn_iniciar = pygame.Rect(ANCHO - UI_LATERAL + 20, 665, 260, 38)
 btn_borrar = pygame.Rect(ANCHO - UI_LATERAL + 20, 715, 260, 38)
+btn_guardar = pygame.Rect(ANCHO - UI_LATERAL + 20, 765, 125, 35)
+btn_cargar = pygame.Rect(ANCHO - UI_LATERAL + 155, 765, 125, 35)
 
 # Animación del robot
 robot_en_movimiento = False
@@ -109,6 +112,12 @@ while True:
             
                 motor.camino_actual = []
                 motor.mapa_celdas.clear()
+
+            if btn_guardar.collidepoint(mx, my):
+                motor.guardar_mapa_dialogo()
+
+            if btn_cargar.collidepoint(mx, my):
+                motor.cargar_mapa_dialogo()
 
             if my < UI_SUPERIOR:
                 for i, h in enumerate(herramientas):
@@ -339,6 +348,8 @@ while True:
         fuente_mono.render(motor.escala_texto + ("_" if motor.editando_escala else "") + " m / celda", True, C_TXT),
         (rect_escala.x + 15, rect_escala.y + 7))
 
+    # BOTONES
+
     # Botón centrar
     hvr_centrar = btn_centrar.collidepoint(mx, my) and panel_x < mx
     pygame.draw.rect(pantalla, (60, 50, 100) if not hvr_centrar else (80, 70, 130), btn_centrar, border_radius=6)
@@ -361,6 +372,22 @@ while True:
     pygame.draw.rect(pantalla, (220, 120, 120), btn_borrar, 1 if not hvr_borrar else 2, border_radius=6)
     txt_b_btn = fuente_ui.render("BORRAR TODO", True, C_TXT)
     pantalla.blit(txt_b_btn, txt_b_btn.get_rect(center=btn_borrar.center))
+
+    # Botón Guardar
+    hvr_guardar = btn_guardar.collidepoint(mx, my) and panel_x < mx
+    color_btn_guardar = (40, 140, 80) if not hvr_guardar else (50, 180, 100) # Verde industrial
+    pygame.draw.rect(pantalla, color_btn_guardar, btn_guardar, border_radius=6)
+    pygame.draw.rect(pantalla, (100, 220, 150), btn_guardar, 1 if not hvr_guardar else 2, border_radius=6)
+    txt_g_btn = fuente_ui.render("GUARDAR MAPA", True, C_TXT)
+    pantalla.blit(txt_g_btn, txt_g_btn.get_rect(center=btn_guardar.center))
+
+    # Botón Cargar
+    hvr_cargar = btn_cargar.collidepoint(mx, my) and panel_x < mx
+    color_btn_cargar = (40, 100, 160) if not hvr_cargar else (50, 130, 200) # Azul industrial
+    pygame.draw.rect(pantalla, color_btn_cargar, btn_cargar, border_radius=6)
+    pygame.draw.rect(pantalla, (120, 180, 240), btn_cargar, 1 if not hvr_cargar else 2, border_radius=6)
+    txt_c_btn = fuente_ui.render("CARGAR MAPA", True, C_TXT)
+    pantalla.blit(txt_c_btn, txt_c_btn.get_rect(center=btn_cargar.center))
     
     # Barra inferior
     pygame.draw.rect(pantalla, C_PANEL_FONDO, (0, ALTO - UI_INFERIOR, ANCHO, UI_INFERIOR))

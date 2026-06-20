@@ -1,4 +1,4 @@
-# ia.py
+# Este algoritmo calcula la ruta directamente al pulsar "iniciar ruta"
 
 def calcular_camino_directo(inicio, fin, mapa_celdas=None):
     """
