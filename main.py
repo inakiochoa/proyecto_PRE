@@ -177,19 +177,21 @@ while True:
                     elif dy > 0: angulo_robot = 90
                     elif dy < 0: angulo_robot = 270
 
+                # Actualizamos el ticket temporal tras el intento de movimiento exitoso
                 ultimo_movimiento_ticket = tiempo_actual
             
-            # 3. COMPROBACIÓN POST-MOVIMIENTO:
-            if motor.pos_A == motor.pos_B:
+            else:
+                # ¡SOLUCIÓN DE SEGURIDAD! Si no hay camino y la simulación está activa, 
+                # significa que la meta se ha bloqueado por completo. Apagamos todo de inmediato.
+                print("¡Ruta imposible! Destino inaccesible o bloqueado.")
+                robot_en_movimiento = False
+
+            # 3. COMPROBACIÓN POST-MOVIMIENTO (Dentro del bloque temporal):
+            # Solo verificamos si ha llegado a la meta en el instante que se mueve
+            if motor.pos_A == motor.pos_B and motor.pos_B is not None:
+                print("¡Objetivo alcanzado con éxito!")
                 robot_en_movimiento = False
                 motor.pos_B = None
-            
-            # 4. COMPROBACIÓN POST-MOVIMIENTO:
-            # Si el robot ya está físicamente en la misma casilla que la meta,
-            # detenemos la simulación y hacemos desaparecer el objetivo.
-            if motor.pos_A == motor.pos_B:
-                robot_en_movimiento = False
-                motor.pos_B = None  
 
     # --- RENDERING MAPA ---
     pantalla.blit(textura_suelo, (0, 0))
