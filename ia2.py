@@ -1,5 +1,9 @@
+
 # ia2.py
 import heapq
+
+# IA2.py
+
 
 
 def a_star(inicio, fin, mapa_muros):
