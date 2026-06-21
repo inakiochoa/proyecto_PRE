@@ -1,4 +1,4 @@
-# graficos.py
+# Graficos.py
 import pygame
 import random
 from constantes import *
