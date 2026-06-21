@@ -97,8 +97,6 @@ def auto_centrar_mapa():
 
     return nueva_camara_x, nueva_camara_y, nuevo_tamano
 
-
-
 def guardar_mapa_disco():
     """Muestra un diálogo nativo para guardar el estado del mapa actual."""
     import tkinter as tk

@@ -192,6 +192,7 @@ while True:
                 if btn_cargar.collidepoint(mx, my):
                     motor.cargar_mapa_disco()
                     robot_en_movimiento = False # Mantenemos el robot quieto al cargar
+                    motor.rastro_fluido = []
 
                     if motor.pos_A:
                         motor.robot_visual_x = float(motor.pos_A[1])  # columna (X)
@@ -211,7 +212,10 @@ while True:
                 if my < UI_SUPERIOR:
                     for i, h in enumerate(herramientas_limpias):
                         btn_rect = pygame.Rect(300 + i * 135, 22, 125, 30)
-                        if btn_rect.collidepoint(mx, my): motor.modo_actual = h["id"]
+                        if btn_rect.collidepoint(mx, my):
+                            motor.modo_actual = h["id"]
+                            if h["id"] == M_A:
+                                motor.rastro_fluido = []
 
                 if en_lienzo and not motor.editando_escala:
                     if motor.modo_actual == M_A:
