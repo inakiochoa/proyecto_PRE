@@ -31,6 +31,8 @@ btn_centrar = pygame.Rect(ANCHO - UI_LATERAL + 20, 525, 260, 35)
 btn_iniciar = pygame.Rect(ANCHO - UI_LATERAL + 20, 570, 260, 35)
 btn_borrar = pygame.Rect(ANCHO - UI_LATERAL + 20, 615, 260, 35)
 btn_volver = pygame.Rect(ANCHO - UI_LATERAL + 20, 660, 260, 35)
+btn_guardar = pygame.Rect(ANCHO - UI_LATERAL + 20, 710, 125, 34)
+btn_cargar = pygame.Rect(ANCHO - UI_LATERAL + 155, 710, 125, 34)
 
 # Elementos Interactivos - MENÚ INICIAL
 rect_menu_pred = pygame.Rect(ANCHO // 2 - 270, ALTO // 2 - 40, 250, 130)
@@ -62,7 +64,7 @@ def verificar_viabilidad_ruta():
 # --- BUCLE PRINCIPAL ---
 while True:
     mx, my = pygame.mouse.get_pos()
-    dt = reloj.tick(60)
+    reloj.tick(60)
 
     if motor.escala_texto.replace('.', '', 1).isdigit() and float(motor.escala_texto) > 0:
         motor.metros_por_celda = float(motor.escala_texto)
@@ -83,6 +85,7 @@ while True:
                     motor.rastro_fluido = []
                     motor.camino_actual = []
                     verificar_viabilidad_ruta()
+
                 elif rect_menu_auto.collidepoint(mx, my):
                     motor.algoritmo_modo = "REACTIVO"
                     motor.estado_pantalla = "SIMULACION"
@@ -172,21 +175,28 @@ while True:
                 if btn_volver.collidepoint(mx, my):
                     robot_en_movimiento = False
                     motor.estado_pantalla = "MENU"
+                    motor.modo_actual = None  # Resetea la herramienta al volver al menú
 
                 if btn_iniciar.collidepoint(mx, my) and not motor.ruta_imposible:
                     ia.reiniciar_memoria()
                     motor.metros_recorridos = 0.0
                     motor.rastro_fluido = []
 
+                    if motor.pos_A and motor.pos_B:
+                        motor.camino_actual = ia.calcular_camino_directo(motor.pos_A, motor.pos_B, motor.mapa_celdas, motor.algoritmo_modo)
+                        robot_en_movimiento = True
+
+                if btn_guardar.collidepoint(mx, my):
+                    motor.guardar_mapa_disco()
+
+                if btn_cargar.collidepoint(mx, my):
+                    motor.cargar_mapa_disco()
+                    robot_en_movimiento = False # Mantenemos el robot quieto al cargar
+
                     if motor.pos_A:
                         motor.robot_visual_x = float(motor.pos_A[1])  # columna (X)
                         motor.robot_visual_y = float(motor.pos_A[0])  # fila (Y)
                         motor.rastro_fluido.append((motor.robot_visual_x, motor.robot_visual_y))
-
-                    motor.camino_actual = ia.calcular_camino_directo(motor.pos_A, motor.pos_B, motor.mapa_celdas,
-                                                                     motor.algoritmo_modo)
-                    if motor.camino_actual:
-                        robot_en_movimiento = True
 
                 if btn_borrar.collidepoint(mx, my):
                     robot_en_movimiento = False
@@ -438,11 +448,14 @@ while True:
             (rect_escala.x + 15, rect_escala.y + 7))
 
         botones_ui = [
-            (btn_centrar, "CENTRAR MAPA [C]", (60, 50, 100), (80, 70, 130), C_CENTRO),
-            (btn_iniciar, "INICIAR RUTA", (40, 140, 80), (50, 180, 100), C_BASE_INICIO),
-            (btn_borrar, "BORRAR TODO", (180, 40, 40), (220, 50, 50), (220, 120, 120)),
-            (btn_volver, "VOLVER AL MENÚ", (50, 60, 75), (70, 85, 105), C_ACENTO)
+            (btn_centrar, "AUTO CENTRAR CAMARA", (50, 60, 75), (70, 85, 105), C_ACENTO),
+            (btn_iniciar, "INICIAR SIMULACIÓN" if not motor.camino_actual else "DETENER RUTA", (40, 150, 90), (50, 180, 110), (100, 220, 150)),
+            (btn_borrar, "REINICIAR ESCENARIO", (150, 50, 65), (190, 65, 80), (250, 120, 130)),
+            (btn_volver, "VOLVER AL MENÚ", (50, 60, 75), (70, 85, 105), C_ACENTO),
+            (btn_guardar, "GUARDAR", (40, 120, 80), (50, 150, 100), (90, 200, 140)),
+            (btn_cargar, "CARGAR", (40, 90, 140), (50, 115, 170), (100, 170, 240))
         ]
+
         for btn, txt, col_std, col_hvr, col_brd in botones_ui:
             hvr = btn.collidepoint(mx, my) and panel_x < mx
             if btn == btn_iniciar and motor.ruta_imposible: col_std, col_hvr, col_brd = (40, 40, 40), (40, 40, 40), (

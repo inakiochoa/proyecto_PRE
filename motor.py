@@ -28,13 +28,13 @@ camara_x = 0
 camara_y = 0
 tamano_celda = 40
 mostrar_cuadricula = True
-modo_actual = M_MURO
+modo_actual = None
 
 # --- CONTROLES DE DESPLAZAMIENTO (PAN) ---
 desplazando = False
 inicio_desplazamiento = (0, 0)
 inicio_camara = (0, 0)
-
+ignorar_clic_mapa = False
 
 def auto_centrar_mapa():
     """
@@ -96,3 +96,79 @@ def auto_centrar_mapa():
     nueva_camara_y = int(centro_f * nuevo_tamano - h_disp / 2)
 
     return nueva_camara_x, nueva_camara_y, nuevo_tamano
+
+
+
+def guardar_mapa_disco():
+    """Muestra un diálogo nativo para guardar el estado del mapa actual."""
+    import tkinter as tk
+    from tkinter import filedialog
+    import pickle
+
+    # Ocultar la ventana principal de tkinter
+    root = tk.Tk()
+    root.withdraw()
+
+    # Abrir explorador de archivos para guardar
+    ruta_archivo = filedialog.asksaveasfilename(
+        title="Guardar Mapa de Probot",
+        defaultextension=".probot",
+        filetypes=[("Archivos de Mapa Probot", "*.probot"), ("Todos los archivos", "*.*")]
+    )
+
+    # Si el usuario no cancela el diálogo
+    if ruta_archivo:
+        try:
+            # Empaquetamos todo el estado relevante del mapa
+            datos_mapa = {
+                "mapa_celdas": mapa_celdas,
+                "pos_A": pos_A,
+                "pos_B": pos_B,
+                "metros_por_celda": metros_por_celda,
+                "escala_texto": escala_texto
+            }
+            with open(ruta_archivo, "wb") as f:
+                pickle.dump(datos_mapa, f)
+            print(f"Mapa guardado con éxito en: {ruta_archivo}")
+        except Exception as e:
+            print(f"Error al guardar el mapa: {e}")
+
+def cargar_mapa_disco():
+    """Muestra un diálogo nativo para cargar un archivo de mapa y actualizar el estado."""
+    import tkinter as tk
+    from tkinter import filedialog
+    import pickle
+
+    # Declaramos globales para poder modificar el estado del motor
+    global mapa_celdas, pos_A, pos_B, metros_por_celda, escala_texto, camino_actual
+
+    root = tk.Tk()
+    root.withdraw()
+
+    # Abrir explorador de archivos para abrir
+    ruta_archivo = filedialog.askopenfilename(
+        title="Cargar Mapa de Probot",
+        filetypes=[("Archivos de Mapa Probot", "*.probot"), ("Todos los archivos", "*.*")]
+    )
+
+    if ruta_archivo:
+        try:
+            with open(ruta_archivo, "rb") as f:
+                datos_mapa = pickle.load(f)
+            
+            # Restauramos las variables del simulador
+            mapa_celdas = datos_mapa.get("mapa_celdas", {})
+            pos_A = datos_mapa.get("pos_A", None)
+            pos_B = datos_mapa.get("pos_B", None)
+            metros_por_celda = datos_mapa.get("metros_por_celda", 0.5)
+            escala_texto = datos_mapa.get("escala_texto", "0.5")
+            
+            # Limpiamos cualquier ruta activa que estuviese calculada
+            camino_actual.clear()
+            
+            # Forzamos un recentrado automático para que el mapa cargado se vea de inmediato
+            auto_centrar_mapa()
+            
+            print(f"Mapa cargado con éxito desde: {ruta_archivo}")
+        except Exception as e:
+            print(f"Error al cargar el mapa: {e}")
