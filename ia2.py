@@ -1,4 +1,4 @@
-# ia.py
+# IA2.py
 
 def calcular_camino_directo(inicio, fin, mapa_celdas=None):
     """
