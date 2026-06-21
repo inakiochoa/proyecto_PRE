@@ -1,87 +1,121 @@
-# Motor.py
+# motor.py
 from constantes import *
 
-# --- ESTADO GLOBAL DEL SIMULADOR ---
-estado_pantalla = "MENU"  # "MENU" o "SIMULACION"
-algoritmo_modo = "OMNISCIENTE"  # "OMNISCIENTE" o "REACTIVO"
-modo_actual = M_MURO
-
-# Estructura del mapa: {(fila, col): M_MURO}
-mapa_celdas = {}
-pos_A = None  # Guardado como (fila, col)
-pos_B = None  # Guardado como (fila, col)
-
-# Cámara y Zoom
-tamano_celda = 45
-camara_x = 0
-camara_y = 0
-
-# Desplazamiento de cámara con botón central
-desplazando = False
-inicio_desplazamiento = (0, 0)
-inicio_camara = (0, 0)
-
-# Métrica y escala
-escala_texto = "1.0"
-metros_por_celda = 1.0
-editando_escala = False
+# --- ESTADO DEL SIMULADOR ---
+camara_x, camara_y = -50, -680
+tamano_celda = 55
 mostrar_cuadricula = True
+escala_texto = "0.5"  # En metros, 0.5m = 50cm
+metros_por_celda = 0.5
+editando_escala = False
 
-# Cinemática del Robot
-robot_visual_x = None  # Flotante posicionado en Columnas (X)
-robot_visual_y = None  # Flotante posicionado en Filas (Y)
-rastro_fluido = []  # Lista de tuplas (x, y) visuales pasadas
-camino_actual = []  # Lista de tuplas (fila, col) planificadas por la IA
-metros_recorridos = 0.0
-ruta_imposible = False
+mapa_celdas = {}
+pos_A, pos_B = None, None
+modo_actual = 1
+camino_actual = []
 
+desplazando = False
+inicio_desplazamiento, inicio_camara = (0, 0), (0, 0)
 
 def auto_centrar_mapa():
-    """Calcula los límites de los elementos actuales y ajusta el zoom y la cámara para mostrarlos todos."""
-    global camara_x, camara_y, tamano_celda
+    coords_activas = list(mapa_celdas.keys())
+    if pos_A: coords_activas.append(pos_A)
+    if pos_B: coords_activas.append(pos_B)
 
-    puntos = []
-    if pos_A: puntos.append(pos_A)
-    if pos_B: puntos.append(pos_B)
-    for (f, c) in mapa_celdas.keys():
-        puntos.append((f, c))
+    if not coords_activas:
+        return -50, -680, 55
 
-    # Si el mapa está completamente vacío, devolvemos un centro estándar por defecto
-    if not puntos:
-        nuevo_tamano = 45
-        nueva_cx = -((ANCHO - UI_LATERAL) // 2) + 200
-        nueva_cy = -((ALTO - UI_SUPERIOR - UI_INFERIOR) // 2)
-        return nueva_cx, nueva_cy, nuevo_tamano
+    coords_activas.append((0, 0))
 
-    # 1. Encontrar los extremos del contenido activo (Bounding Box)
-    min_f = min(p[0] for p in puntos)
-    max_f = max(p[0] for p in puntos)
-    min_c = min(p[1] for p in puntos)
-    max_c = max(p[1] for p in puntos)
+    min_c = min(c[0] for c in coords_activas)
+    max_c = max(c[0] for c in coords_activas)
+    min_f = min(c[1] for c in coords_activas)
+    max_f = max(c[1] for c in coords_activas)
 
-    filas = max_f - min_f + 1
-    cols = max_c - min_c + 1
+    ancho_celdas = (max_c - min_c + 1) + 4
+    alto_celdas = (max_f - min_f + 1) + 4
+    espacio_w = ANCHO - UI_LATERAL
+    espacio_h = ALTO - UI_SUPERIOR - UI_INFERIOR
 
-    # 2. Calcular el nuevo tamaño de celda (zoom) con un margen de seguridad de 120px para que respire
-    area_ancho = ANCHO - UI_LATERAL - 120
-    area_alto = ALTO - UI_SUPERIOR - UI_INFERIOR - 120
+    nuevo_tamano_celda = int(min(espacio_w / ancho_celdas, espacio_h / alto_celdas))
+    nuevo_tamano_celda = max(25, min(150, nuevo_tamano_celda))
 
-    tam_ancho = area_ancho / max(1, cols)
-    tam_alto = area_alto / max(1, filas)
+    centro_logico_x = (min_c + max_c + 1) / 2
+    centro_logico_y = (min_f + max_f + 1) / 2
+    nueva_camara_x = (centro_logico_x * nuevo_tamano_celda) - (espacio_w / 2)
+    nueva_camara_y = (centro_logico_y * nuevo_tamano_celda) - (espacio_h / 2)
+    return int(nueva_camara_x), int(nueva_camara_y), nuevo_tamano_celda
 
-    # Acotamos el zoom para evitar deformaciones microscópicas o gigantescas
-    nuevo_tamano = max(20, min(150, int(min(tam_ancho, tam_alto))))
+def guardar_mapa_dialogo():
+    """Muestra un diálogo nativo para guardar el estado del mapa actual."""
+    import tkinter as tk
+    from tkinter import filedialog
+    import pickle
 
-    # 3. Calcular el centro matemático indexado
-    centro_c = (min_c + max_c) / 2
-    centro_f = (min_f + max_f) / 2
+    # Ocultar la ventana principal de tkinter
+    root = tk.Tk()
+    root.withdraw()
 
-    # 4. Calcular el centro físico útil del lienzo de simulación
-    pantalla_cx = (ANCHO - UI_LATERAL) / 2
-    pantalla_cy = (ALTO - UI_SUPERIOR - UI_INFERIOR) / 2
+    # Abrir explorador de archivos para guardar
+    ruta_archivo = filedialog.asksaveasfilename(
+        title="Guardar Mapa de Probot",
+        defaultextension=".probot",
+        filetypes=[("Archivos de Mapa Probot", "*.probot"), ("Todos los archivos", "*.*")]
+    )
 
-    # 5. Ajustar cámara compensando el desplazamiento del medio bloque local de las funciones de renderizado
-    nueva_cx = int((centro_c + 0.5) * nuevo_tamano - pantalla_cx)
-    nueva_cy = int((centro_f + 0.5) * nuevo_tamano - pantalla_cy)
+    # Si el usuario no cancela el diálogo
+    if ruta_archivo:
+        try:
+            # Empaquetamos todo el estado relevante del mapa
+            datos_mapa = {
+                "mapa_celdas": mapa_celdas,
+                "pos_A": pos_A,
+                "pos_B": pos_B,
+                "metros_por_celda": metros_por_celda,
+                "escala_texto": escala_texto
+            }
+            with open(ruta_archivo, "wb") as f:
+                pickle.dump(datos_mapa, f)
+            print(f"Mapa guardado con éxito en: {ruta_archivo}")
+        except Exception as e:
+            print(f"Error al guardar el mapa: {e}")
 
-    return nueva_cx, nueva_cy, nuevo_tamano
+def cargar_mapa_dialogo():
+    """Muestra un diálogo nativo para cargar un archivo de mapa y actualizar el estado."""
+    import tkinter as tk
+    from tkinter import filedialog
+    import pickle
+
+    # Declaramos globales para poder modificar el estado del motor
+    global mapa_celdas, pos_A, pos_B, metros_por_celda, escala_texto, camino_actual
+
+    root = tk.Tk()
+    root.withdraw()
+
+    # Abrir explorador de archivos para abrir
+    ruta_archivo = filedialog.askopenfilename(
+        title="Cargar Mapa de Probot",
+        filetypes=[("Archivos de Mapa Probot", "*.probot"), ("Todos los archivos", "*.*")]
+    )
+
+    if ruta_archivo:
+        try:
+            with open(ruta_archivo, "rb") as f:
+                datos_mapa = pickle.load(f)
+            
+            # Restauramos las variables del simulador
+            mapa_celdas = datos_mapa.get("mapa_celdas", {})
+            pos_A = datos_mapa.get("pos_A", None)
+            pos_B = datos_mapa.get("pos_B", None)
+            metros_por_celda = datos_mapa.get("metros_por_celda", 0.5)
+            escala_texto = datos_mapa.get("escala_texto", "0.5")
+            
+            # Limpiamos cualquier ruta activa que estuviese calculada
+            camino_actual = []
+            
+            # Forzamos un recentrado automático para que el mapa cargado se vea de inmediato
+            auto_centrar_mapa()
+            
+            print(f"Mapa cargado con éxito desde: {ruta_archivo}")
+        except Exception as e:
+            print(f"Error al cargar el mapa: {e}")
