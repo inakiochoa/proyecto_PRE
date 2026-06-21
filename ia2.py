@@ -1,54 +1,54 @@
-# ia.py
+# ia2.py
+import heapq
 
-def calcular_camino_directo(inicio, fin, mapa_celdas=None):
+
+def a_star(inicio, fin, mapa_muros):
     """
-    [BOTÓN INICIAR RUTA] Calcula la ruta óptima de antemano utilizando el algoritmo BFS.
-    Analiza el mapa completo y esquiva todos los muros desde el primer segundo.
+    Algoritmo A* puro y de alto rendimiento que trabaja de forma estricta
+    en formato de matriz (fila, columna).
     """
-    if inicio is None or fin is None:
-        return []
+    if not inicio or not fin:
+        return None
 
-    # Si por algún motivo no llega el mapa, asumimos que está vacío
-    if mapa_celdas is None:
-        mapa_celdas = {}
+    def heuristica(a, b):
+        # Usamos distancia Manhattan estándar para movimientos ortogonales en rejilla
+        return abs(a[0] - b[0]) + abs(a[1] - b[1])
 
-    from constantes import M_MURO
+    open_set = []
+    heapq.heappush(open_set, (0, inicio))
 
-    # Cola de exploración: guarda (casilla_actual, camino_hasta_esta_casilla)
-    cola = [(inicio, [])]
-    # Conjunto de casillas ya revisadas para no entrar en bucles infinitos
-    visitados = {inicio}
+    procedencia = {}
+    g_score = {inicio: 0}
+    f_score = {inicio: heuristica(inicio, fin)}
 
-    while cola:
-        casilla_actual, camino_acumulado = cola.pop(0)
+    # Direcciones ortogonales directas (Arriba, Abajo, Izquierda, Derecha)
+    movimientos = [(-1, 0), (1, 0), (0, -1), (0, 1)]
 
-        # Si encontramos la meta, devolvemos la ruta acumulada paso a paso
-        if casilla_actual == fin:
-            return camino_acumulado
+    while open_set:
+        actual = heapq.heappop(open_set)[1]
 
-        # Mirar las 4 casillas vecinas (Arriba, Abajo, Izquierda, Derecha)
-        x, y = casilla_actual
-        vecinos = [(x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)]
+        if actual == fin:
+            # Reconstrucción reversa del camino óptimo encontrado
+            camino = []
+            while actual in procedencia:
+                camino.append(actual)
+                actual = procedencia[actual]
+            camino.reverse()
+            return camino
 
-        for vecino in vecinos:
-            # Si el vecino no ha sido visitado Y NO contiene un muro, es un camino válido
-            if vecino not in visitados and mapa_celdas.get(vecino) != M_MURO:
-                visitados.add(vecino)
-                # Añadimos a la cola para explorar desde ahí en la siguiente ronda
-                cola.append((vecino, camino_acumulado + [vecino]))
+        for df, dc in movimientos:
+            vecino = (actual[0] + df, actual[1] + dc)
 
-    # Si se explora todo y no hay forma de llegar (meta encerrada), devolvemos camino vacío
-    return []
+            # Verificación estricta de colisión con muros indexados en memoria
+            if mapa_muros.get(vecino) == 1:  # 1 representa M_MURO
+                continue
 
+            tentative_g = g_score[actual] + 1
 
-def actualizar_movimiento(pos_actual, pos_meta, camino_actual, mapa_celdas):
-    """
-    [TEMPORIZADOR] Hace avanzar al robot casilla a casilla por la ruta inteligente ya calculada.
-    Como el camino ya esquiva los muros de antemano, aquí solo extraemos el siguiente paso.
-    """
-    if not camino_actual:
-        return pos_actual, camino_actual
+            if tentative_g < g_score.get(vecino, float('inf')):
+                procedencia[vecino] = actual
+                g_score[vecino] = tentative_g
+                f_score[vecino] = tentative_g + heuristica(vecino, fin)
+                heapq.heappush(open_set, (f_score[vecino], vecino))
 
-    # Como la ruta ya es perfecta gracias al BFS del botón, avanzamos de forma segura
-    siguiente_casilla = camino_actual.pop(0)
-    return siguiente_casilla, camino_actual
+    return None  # No existe un camino viable libre de colisiones
