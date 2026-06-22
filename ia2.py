@@ -1,17 +1,11 @@
 # ia2.py
 import heapq
 
-
 def a_star(inicio, fin, mapa_muros):
-    """
-    Algoritmo A* puro y de alto rendimiento que trabaja de forma estricta
-    en formato de matriz (fila, columna).
-    """
     if not inicio or not fin:
         return None
 
     def heuristica(a, b):
-        # Usamos distancia Manhattan estándar para movimientos ortogonales en rejilla
         return abs(a[0] - b[0]) + abs(a[1] - b[1])
 
     open_set = []
@@ -21,14 +15,19 @@ def a_star(inicio, fin, mapa_muros):
     g_score = {inicio: 0}
     f_score = {inicio: heuristica(inicio, fin)}
 
-    # Direcciones ortogonales directas (Arriba, Abajo, Izquierda, Derecha)
     movimientos = [(-1, 0), (1, 0), (0, -1), (0, 1)]
+
+    MAX_NODOS = 10_000  # <- límite de seguridad
+    nodos_explorados = 0
 
     while open_set:
         actual = heapq.heappop(open_set)[1]
 
+        nodos_explorados += 1
+        if nodos_explorados > MAX_NODOS:
+            return None  # Espacio demasiado grande o meta inaccesible
+
         if actual == fin:
-            # Reconstrucción reversa del camino óptimo encontrado
             camino = []
             while actual in procedencia:
                 camino.append(actual)
@@ -39,8 +38,7 @@ def a_star(inicio, fin, mapa_muros):
         for df, dc in movimientos:
             vecino = (actual[0] + df, actual[1] + dc)
 
-            # Verificación estricta de colisión con muros indexados en memoria
-            if mapa_muros.get(vecino) == 1:  # 1 representa M_MURO
+            if mapa_muros.get(vecino) == 1:
                 continue
 
             tentative_g = g_score[actual] + 1
@@ -51,4 +49,4 @@ def a_star(inicio, fin, mapa_muros):
                 f_score[vecino] = tentative_g + heuristica(vecino, fin)
                 heapq.heappush(open_set, (f_score[vecino], vecino))
 
-    return None  # No existe un camino viable libre de colisiones
+    return None
